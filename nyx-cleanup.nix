@@ -2,7 +2,7 @@
 
 let
   cfg = config.modules.nyx-cleanup;
-  scriptTargetPath = "${cfg.nixDirectory}/Misc/zsh/nyx-cleanup.zsh";
+  scriptTargetPath = "${cfg.nixDirectory}/Misc/Nyx-Tools/zsh/nyx-cleanup.zsh";
 in
 {
   options.modules.nyx-cleanup = {

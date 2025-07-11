@@ -2,10 +2,10 @@
 
 let
   cfg = config.modules.nix-tool;
-  scriptTargetPath = "${cfg.nixDirectory}/Misc/zsh/nyx-rebuild.zsh";
+  scriptTargetPath = "${cfg.nixDirectory}/Misc/Nyx-Tools/zsh/nyx-cleanup.zsh";
 in
 {
-  options.modules.nix-tool.enable = lib.mkEnableOption "Enable nix-tool Zsh function for tool metadata display.";
+  options.modules.nix-tool.enable = lib.mkEnableOption "Enable nix-tool Zsh function for Banner display.";
 
   config = lib.mkIf cfg.enable {
     home.packages = [
