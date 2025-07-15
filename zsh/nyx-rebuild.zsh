@@ -94,8 +94,8 @@ function nyx-rebuild() {
   nix-tool "Nyx" "nyx-rebuild" "$version" \
     "Smart NixOS configuration rebuilder" \
     "by Peritia-System" \
-    "https://github.com/Peritia-System/nix-os-private" \
-    "https://github.com/Peritia-System/nix-os-private/issues" \
+    "https://github.com/Peritia-System/Nyx-Tools" \
+    "https://github.com/Peritia-System/Nyx-Tools/issues" \
     "Always up to date for you!"
   echo
 
