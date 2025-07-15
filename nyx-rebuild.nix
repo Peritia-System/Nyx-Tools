@@ -2,7 +2,7 @@
 
 let
   cfg = config.modules.nyx-rebuild;
-  scriptTargetPath = "${cfg.nixDirectory}/Misc/Nyx-Tools/zsh/nyx-cleanup.zsh";
+  scriptTargetPath = "${cfg.nixDirectory}/Misc/Nyx-Tools/zsh/nyx-rebuild.zsh";
 in
 {
   options.modules.nyx-rebuild = {
