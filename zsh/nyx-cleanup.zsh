@@ -1,8 +1,6 @@
-# nyx-cleanup.zsh — Improved Version
-
 function nyx-cleanup() {
   ##### 🛠️ CONFIGURATION #####
-  local version="1.3.0"
+  local version="1.3.1"
   local keep_generations="${keep_generations:-5}"
   local start_human=$(date '+%Y-%m-%d %H:%M:%S')
   local nix_cleanup_log="nixos-cleanup.log"
@@ -30,6 +28,15 @@ function nyx-cleanup() {
     console-log "${BOLD}$(printf '%*s\n' "${COLUMNS:-40}" '' | tr ' ' '=')${RESET}"
   }
 
+  format_bytes() {
+    num=$1
+    echo $(numfmt --to=iec-i --suffix=B "$num")
+  }
+
+  disk_usage() {
+    df --output=used /nix/store | tail -1
+  }
+
   ##### 📘 TOOL INFO #####
   print_line
   nix-tool "Nyx" "nyx-cleanup" "$version" \
@@ -39,28 +46,33 @@ function nyx-cleanup() {
     "https://github.com/Peritia-System/Nyx-Tools/issues" \
     "Always up to date for you!"
   echo
-  echo -e "${BOLD}${CYAN}🧼 Nyx Cleanup v$version${RESET}"
+  echo -e "${BOLD}${CYAN}🧼 Nyx Cleanup v$version — Starting...${RESET}"
   print_line
 
+  ##### 📊 STATS: BEFORE #####
+  local disk_before=$(disk_usage)
+  console-log "${CYAN}📊 Disk used before cleanup: $(format_bytes $disk_before)${RESET}"
+
   ##### 🧹 EXECUTION #####
-  console-log "${MAGENTA}Cleaning up old generations and Nix garbage...${RESET}"
-  console-log "Started cleanup: $(date)"
+  console-log "\n${BLUE}🗑️  Collecting Nix garbage...${RESET}"
+  sudo nix-collect-garbage -d >> "$cleanup_log" 2>&1
 
-  console-log "\n${BLUE}🗑️  Running Nix garbage collection...${RESET}"
-  sudo nix-collect-garbage -d | tee -a "$nix_cleanup_log"
-
-  console-log "\n${BLUE}🧹 Removing old generations (keeping last $keep_generations)...${RESET}"
-  sudo nix-collect-garbage --delete-older-than "${keep_generations}d" | tee -a "$nix_cleanup_log"
+  console-log "\n${BLUE}🧹 Deleting old generations (keep $keep_generations)...${RESET}"
+  sudo nix-collect-garbage --delete-older-than "${keep_generations}d" >> "$cleanup_log" 2>&1
 
   if [[ "$optimize_store" == "true" ]]; then
     console-log "\n${MAGENTA}🔧 Optimizing the Nix store...${RESET}"
-    sudo nix-store --optimize | tee -a "$nix_cleanup_log"
+    sudo nix-store --optimize >> "$cleanup_log" 2>&1
   fi
 
-  ##### ✅ SUMMARY #####
+  ##### 📊 STATS: AFTER #####
+  local disk_after=$(disk_usage)
+  local space_freed=$((disk_before - disk_after))
   print_line
-  console-log "${GREEN}${BOLD}✅ Nix cleanup completed successfully!${RESET}"
+  console-log "${GREEN}${BOLD}✅ Cleanup Completed Successfully!${RESET}"
   console-log "${CYAN}🕒 Finished at: $(date)${RESET}"
+  console-log "${CYAN}📊 Disk used after cleanup:  $(format_bytes $disk_after)${RESET}"
+  console-log "${CYAN}💾 Space freed:              $(format_bytes $space_freed)${RESET}"
   print_line
 
   ##### 📝 GIT LOGGING #####
