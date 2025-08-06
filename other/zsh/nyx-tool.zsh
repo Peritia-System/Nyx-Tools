@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
-# nix-tool: reusable metadata banner printer with Base16 theme
-function nix-tool() {
+# nyx-tool: reusable metadata banner printer with Base16 theme
+function nyx-tool() {
   local logo="${1:-Nyx}"
   local name="${2:-nix-script}"
   local version="${3:-Version Unknown - Please Open Issue}"             
