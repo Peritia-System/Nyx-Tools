@@ -78,6 +78,11 @@ Nyx-Tools
 ```nix
 # home.nix
 {
+  config,
+  inputs,
+  ...
+}:
+{
   imports = [
     inputs.nyx.homeManagerModules.default
   ];
