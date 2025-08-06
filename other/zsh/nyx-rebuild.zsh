@@ -91,7 +91,7 @@ function nyx-rebuild() {
 
   #################### 📘 TOOL INFO ####################
   echo
-  nix-tool "Nyx" "nyx-rebuild" "$version" \
+  nyx-tool "Nyx" "nyx-rebuild" "$version" \
     "Smart NixOS configuration rebuilder" \
     "by Peritia-System" \
     "https://github.com/Peritia-System/Nyx-Tools" \

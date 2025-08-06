@@ -1,3 +1,12 @@
+    # Extract cfg values into local variables
+        nix_dir="${cfg.nixDirectory}"
+        start_editor="${toString cfg.startEditor}"
+        enable_formatting="${toString cfg.enableFormatting}"
+        editor_cmd="${cfg.editor}"
+        formatter_cmd="${cfg.formatter}"
+        auto_push="${toString cfg.autoPush}"
+        source "${scriptTargetPath}"
+
 function nyx-cleanup() {
   ##### 🛠️ CONFIGURATION #####
   local version="1.3.1"
@@ -39,7 +48,7 @@ function nyx-cleanup() {
 
   ##### 📘 TOOL INFO #####
   print_line
-  nix-tool "Nyx" "nyx-cleanup" "$version" \
+  nyx-tool "Nyx" "nyx-cleanup" "$version" \
     "Smart NixOS configuration cleanup" \
     "by Peritia-System" \
     "https://github.com/Peritia-System/Nyx-Tools" \

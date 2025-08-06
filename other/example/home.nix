@@ -1,11 +1,5 @@
-```nix
+{ config, nixDirectory, username, pkgs, inputs, ... }:
 
-{ config, nixDirectory, pkgs, ... }:
-
-let
-  nixDirectory = "/home/${username}/NixOS";
-
-in
 {
 
   ################################################################
@@ -13,42 +7,47 @@ in
   ################################################################
 
   imports = [
-    # Nyx Tools
-    /home/${username}/NixOS/Nyx-Tools
-  
+    # Other Home Manager Modules 
+    # ......
+    inputs.nyx.homeManagerModules.default
   ];
-
 
   ################################################################
   # Nyx Tools Configuration
   ################################################################
 
-  modules.nyx-rebuild = {
+  nyx.nyx-rebuild = {
     enable = true;
     inherit username nixDirectory;
     editor = "nvim";
     formatter = "alejandra";
     enableAlias = false;
-    autoPush = false;
-    enableFormatting = false;
+    autoPushLog = false;
+    autoPushNixDir = false;
     startEditor = false;
+    logDir = "/home/${username}/.nyx/nyx-rebuild/logs";
   };
-
-  modules.nyx-cleanup = {
+  
+  nyx.nyx-cleanup = {
     enable = true;
     inherit username nixDirectory;
     autoPush = false;
     keepGenerations = 5;
     enableAlias = false;
+    logDir = "/home/${username}/.nyx/nyx-rebuild/logs";
   };
-
-    
-  modules.nix-tool = {
+  
+  nyx.nyx-tool = {
     enable = true;
     inherit nixDirectory;
   };
 
+
+  ################################################################
+  # Basic Home Manager Setup
+  ################################################################
+
+  home.username = username;
+  home.homeDirectory = "/home/${username}";
+  home.stateVersion = "25.05";
 }
-
-
-```

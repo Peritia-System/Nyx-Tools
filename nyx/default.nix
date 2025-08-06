@@ -14,9 +14,4 @@
     ./nyx-cleanup.nix
   ];
 
-  home.packages = with pkgs; [
-    nix-output-monitor
-   ];
-
-
 }
