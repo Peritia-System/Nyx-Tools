@@ -200,7 +200,7 @@ echo
 cd "$nix_dir" || { exit_code=1; return $exit_code; }
 
 # === CHECK FOR UNCOMMITTED CHANGES ===
-console-log "\n''${BOLD}''${BLUE}📁 Checking $git_bin status...''${RESET}"
+echo "\n''${BOLD}''${BLUE}📁 Checking $git_bin status...''${RESET}"
 if [[ -n $($git_bin status --porcelain) ]]; then
   echo "''${YELLOW}⚠️  Uncommitted changes detected!''${RESET}"
   echo "''${RED}⏳ 5s to cancel...''${RESET}"
