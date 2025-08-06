@@ -34,7 +34,7 @@
     autoPush = false;
     keepGenerations = 5;
     enableAlias = false;
-    logDir = "/home/${username}/.nyx/nyx-rebuild/logs";
+    logDir = "/home/${username}/.nyx/nyx-cleanup/logs";
   };
   
   nyx.nyx-tool = {
