@@ -270,8 +270,10 @@ $git_bin commit -m "Rebuild: $gen" || true
 
 cd "$log_dir"
 final_log="$log_dir/nixos-gen_''${stats_gen}-switch-''${timestamp}.log"
+$git_bin add "$build_log"
 mv "$build_log" "$final_log"
-$git_bin add "$log_dir"
+$git_bin add "$build_log"
+$git_bin add "$final_log"
 $git_bin commit -m "log for $gen" || true
 
 # === FINAL PUSH LOGS ===
