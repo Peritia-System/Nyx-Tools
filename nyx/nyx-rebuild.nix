@@ -270,11 +270,11 @@ $git_bin commit -m "Rebuild: $gen" || true
 cd "$log_dir"
 final_log="$log_dir/nixos-gen_''${stats_gen}-switch-''${timestamp}.log"
 mv "$build_log" "$final_log"
-$git_bin add "$final_log"
+$git_bin add "$log_dir"
 $git_bin commit -m "log for $gen" || true
 
 # === FINAL PUSH LOGS ===
-$git_bin add "$final_log"
+$git_bin add "$log_dir"
 $git_bin commit -m "chore(rebuild): successful rebuild on $(date)" || true
 
 if [[ "$auto_push_log" == "true" ]]; then
