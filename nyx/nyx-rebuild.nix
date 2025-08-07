@@ -264,6 +264,7 @@ gen=$(nixos-rebuild list-generations | grep True | awk '{$1=$1};1')
 stats_gen=$(echo "$gen" | awk '{printf "%04d\n", $1}')
 finish_nyx_rebuild >> "$build_log"
 
+$git_bin add "$build_log"
 $git_bin add -u
 $git_bin commit -m "Rebuild: $gen" || true
 
@@ -271,6 +272,7 @@ cd "$log_dir"
 final_log="$log_dir/nixos-gen_''${stats_gen}-switch-''${timestamp}.log"
 mv "$build_log" "$final_log"
 $git_bin add "$log_dir"
+$git_bin add "$build_log"
 $git_bin commit -m "log for $gen" || true
 
 # === FINAL PUSH LOGS ===
