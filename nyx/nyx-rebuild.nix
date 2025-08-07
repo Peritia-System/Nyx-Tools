@@ -251,7 +251,7 @@ if [[ $rebuild_status -ne 0 ]]; then
   stats_errors=$(grep -Ei -A 1 'error|failed' "$build_log" | tee -a "$error_log" | wc -l)
   stats_last_error_lines=$(tail -n 10 "$error_log") 
   cd "$log_dir"
-  $git_bin add "$log_dir"
+  $git_bin add "$build_log"
   $git_bin commit -m "chore(rebuild): failed rebuild on $(date)" || true
   [[ "$auto_push_nixdir" == "true" ]] && (cd "$nix_dir" && $git_bin push || true)
   cd "$nix_dir"
