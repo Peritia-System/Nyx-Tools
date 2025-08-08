@@ -94,34 +94,31 @@ Nyx-Tools
 ```nix
 {
   nyx = {
-    # Global settings
-    enable       = true;
-    username     = username;
-    nixDirectory = nixDirectory;
-    logDir       = "${nixDirectory}/Logs";
-    autoPush     = true;
+    
+    enable = true;
+    inherit username nixDirectory;
+    logDir = "/home/${username}/.nyx/logs";
+    autoPush = false;
 
-    # Tool-specific settings
     nyx-rebuild = {
-      enable           = true;
-      formatter        = "alejandra";
-      enableFormatting = false;
-      editor           = "nvim";
-      startEditor      = false;
-      enableAlias      = false;
+      enable = true;
+      editor = "nvim";
+      formatter = "alejandra";
+      enableAlias = false;
+      startEditor = false;
     };
-
+    
     nyx-cleanup = {
-      enable          = true;
+      enable = true;
       keepGenerations = 5;
-      enableAlias     = false;
+      enableAlias = false;
     };
-
+    
     nyx-tool = {
       enable = true;
     };
   };
-  }
+}
 ```
 
 > ⚠️ **Note**: `nixDirectory` must be a **full path** to your flake repo (e.g., `/home/${username}/NixOS/Nyx-Tools`).
