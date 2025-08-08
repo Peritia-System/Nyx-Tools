@@ -1,17 +1,53 @@
-# Import all modules so only needs to Import nyx.nix
-   
-
-{ config, pkgs, lib, nixDirectory, ... }:
+# nyx.nix
+{ config, lib, ... }:
+with lib;
 
 {
+  ################################################################
+  # Global Nyx Options
+  ################################################################
+  options.nyx = {
+    enable = mkEnableOption "Enable all Nyx tools";
+
+    username = mkOption {
+      type = types.str;
+      description = "Username for Nyx tools";
+    };
+
+    nixDirectory = mkOption {
+      type = types.path;
+      description = "Path to NixOS flake directory";
+    };
+
+    logDir = mkOption {
+      type = types.path;
+      default = "/home/${config.nyx.username}/.nyx/logs";
+      description = "Directory for Nyx logs";
+    };
+
+    autoPush = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Automatically push changes after rebuild/cleanup";
+    };
+  };
+
+  ################################################################
+  # Import submodules
+  ################################################################
   imports = [
-    # System modules
-    # Rebuild
     ./nyx-rebuild.nix
-    # Custom Banner
-    ./nyx-tool.nix
-    # Nyx cleanup
     ./nyx-cleanup.nix
+    ./nyx-tool.nix
   ];
+
+  ################################################################
+  # Global disable logic
+  ################################################################
+  config = mkIf (!config.nyx.enable) {
+    nyx.nyx-rebuild.enable = false;
+    nyx.nyx-cleanup.enable = false;
+    nyx.nyx-tool.enable = false;
+  };
 
 }

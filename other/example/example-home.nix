@@ -16,33 +16,32 @@
   # Nyx Tools Configuration
   ################################################################
 
-  nyx.nyx-rebuild = {
+nyx = {
+  
+  enable = true;
+  inherit username nixDirectory;
+  logDir = "/home/${username}/.nyx/logs";
+  autoPush = false;
+
+  nyx-rebuild = {
     enable = true;
-    inherit username nixDirectory;
     editor = "nvim";
     formatter = "alejandra";
     enableAlias = false;
-    autoPushLog = false;
-    autoPushNixDir = false;
     startEditor = false;
-    logDir = "/home/${username}/.nyx/nyx-rebuild/logs";
   };
   
-  nyx.nyx-cleanup = {
+  nyx-cleanup = {
     enable = true;
-    inherit username nixDirectory;
-    autoPush = false;
     keepGenerations = 5;
     enableAlias = false;
-    logDir = "/home/${username}/.nyx/nyx-cleanup/logs";
   };
   
-  nyx.nyx-tool = {
+  nyx-tool = {
     enable = true;
-    inherit nixDirectory;
   };
 
-
+}
   ################################################################
   # Basic Home Manager Setup
   ################################################################
