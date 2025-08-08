@@ -1,0 +1,282 @@
+# nyx-tui.sh (Bash TUI)
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- Config ---------------------------------------------------------------
+: "${NYX_GITHUB:=https://github.com/Peritia-System/Nyx-Tools}"
+: "${NYX_ISSUES:=${NYX_GITHUB}/issues}"
+: "${NYX_LOG_DIR:=/var/log/nyx}"             # adjust if you keep logs elsewhere
+: "${DIALOG:=dialog}"
+
+# Optional: reuse your banner helper if present
+if command -v nyx-tool >/dev/null 2>&1; then
+  nyx-tool "Nyx" "nyx-tui" "${NYX_VERSION:-0.1.0}" \
+    "Interactive TUI for Nyx tasks" "by Peritia-System" \
+    "$NYX_GITHUB" "$NYX_ISSUES" "Press <Enter> to open the menu."
+else
+  echo "Nyx TUI — Interactive shell for Nyx tasks"
+fi
+
+# --- Helpers --------------------------------------------------------------
+pause() { read -r -p "Press Enter to continue..." _; }
+
+need() {
+  command -v "$1" >/dev/null 2>&1 || { echo "Missing dependency: $1"; exit 1; }
+}
+
+show_log_tail() {
+  local file="$1"
+  if [ -f "$file" ]; then
+    "$DIALOG" --title "Tail: $(basename "$file")" --textbox "$file" 20 100
+  else
+    "$DIALOG" --msgbox "Log not found:\n$file" 8 60
+  fi
+}
+
+run_with_spinner() {
+  # Runs the given command while a simple spinner animates.
+  # Usage: run_with_spinner "title" cmd arg1 arg2...
+  local title="$1"; shift
+  (
+    set +e
+    "$@"
+    echo $? > /tmp/nyx_tui_last_status.$$
+  ) &
+
+  local pid=$!
+  local spin='|/-\'
+  local i=0
+  while kill -0 "$pid" 2>/dev/null; do
+    printf "\r%s %s" "$title" "${spin:i++%${#spin}:1}"
+    sleep 0.1
+  done
+  local status
+  status=$(cat /tmp/nyx_tui_last_status.$$); rm -f /tmp/nyx_tui_last_status.$$
+  printf "\r"
+  return "$status"
+}
+
+# --- Actions --------------------------------------------------------------
+action_rebuild() {
+  # Prefer your existing script if available
+  if command -v nyx-rebuild >/dev/null 2>&1; then
+    clear
+    echo "Starting nyx-rebuild..."
+    run_with_spinner "Rebuilding..." nyx-rebuild || true
+    echo
+    echo "Done."
+    pause
+  else
+    "$DIALOG" --msgbox "nyx-rebuild not found in PATH." 8 50
+  fi
+}
+
+action_cleanup() {
+  if command -v nyx-cleanup >/dev/null 2>&1; then
+    clear
+    echo "Running nyx-cleanup..."
+    run_with_spinner "Cleaning up..." nyx-cleanup || true
+    echo
+    pause
+  else
+    "$DIALOG" --msgbox "nyx-cleanup not found in PATH." 8 50
+  fi
+}
+
+action_git_pull() {
+  clear
+  echo "Git pull on Nix dir (current):"
+  run_with_spinner "git pull..." git pull --rebase || true
+  echo
+  pause
+}
+
+action_view_logs() {
+  local dir="${NYX_LOG_DIR}"
+  if [ ! -d "$dir" ]; then
+    "$DIALOG" --msgbox "Log directory not found:\n$dir" 8 60
+    return
+  fi
+  local file
+  file=$("$DIALOG" --title "Nyx Logs" --stdout --fselect "$dir/" 15 80) || return
+  [ -n "${file:-}" ] && show_log_tail "$file"
+}
+
+action_system_info() {
+  local tmp
+  tmp=$(mktemp)
+  {
+    echo "Host: $(hostname)"
+    echo "Kernel: $(uname -srmo)"
+    echo "Uptime: $(uptime -p)"
+    echo "Disk:"
+    df -h /
+    echo
+    echo "NixOS Generations:"
+    sudo nix-env -p /nix/var/nix/profiles/system --list-generations || true
+  } > "$tmp"
+  "$DIALOG" --title "System Info" --textbox "$tmp" 22 90
+  rm -f "$tmp"
+}
+
+action_update_flake() {
+  clear
+  if command -v nix >/dev/null 2>&1; then
+    run_with_spinner "nix flake update..." nix flake update || true
+    echo
+    pause
+  else
+    "$DIALOG" --msgbox "nix command not found." 8 40
+  fi
+}
+
+action_open_shell() {
+  clear
+  echo "Opening nix develop shell (if defined)..."
+  echo "Exit the shell to return to the TUI."
+  pause
+  nix develop || true
+}
+
+# --- Menu loop ------------------------------------------------------------
+need "$DIALOG"
+while true; do
+  choice=$("$DIALOG" --clear --stdout \
+    --title "Nyx TUI" \
+    --menu "Select an action:" 18 70 10 \
+      1 "Rebuild (nyx-rebuild)" \
+      2 "Cleanup (nyx-cleanup)" \
+      3 "View Logs" \
+      4 "Git Pull (in current repo)" \
+      5 "Update Flake Inputs" \
+      6 "System Info" \
+      7 "Open nix develop shell" \
+      X "Exit")
+  rc=$?; [ $rc -ne 0 ] && clear && exit 0
+
+  case "$choice" in
+    1) action_rebuild ;;
+    2) action_cleanup ;;
+    3) action_view_logs ;;
+    4) action_git_pull ;;
+    5) action_update_flake ;;
+    6) action_system_info ;;
+    7) action_open_shell ;;
+    X) clear; exit 0 ;;
+  esac
+done
+```
+
+---
+
+# nyx-tui.nix (Nix module)
+
+{ config, lib, pkgs, ... }:
+let
+  cfg = config.programs.nyx.tui;
+in
+{
+  options.programs.nyx.tui = {
+    enable = lib.mkEnableOption "Enable Nyx TUI (nyx-tui)";
+    packageName = lib.mkOption {
+      type = lib.types.str;
+      default = "nyx-tui";
+      description = "Name of the package to install (for overrides).";
+    };
+    logDir = lib.mkOption {
+      type = lib.types.path;
+      default = /var/log/nyx;
+      description = "Where the TUI looks for logs.";
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    environment.systemPackages = [
+      (pkgs.stdenv.mkDerivation {
+        pname = cfg.packageName;
+        version = "0.1.0";
+        src = ./.;
+
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        buildInputs = [ ];
+
+        installPhase = ''
+          mkdir -p $out/bin
+          # ship the script
+          cp ${./nyx-tui.sh} $out/bin/nyx-tui
+          chmod +x $out/bin/nyx-tui
+
+          # wrap with runtime deps
+          makeWrapper $out/bin/nyx-tui $out/bin/nyx-tui \
+            --set NYX_LOG_DIR ${toString cfg.logDir} \
+            --prefix PATH : ${lib.makeBinPath [
+              pkgs.dialog
+              pkgs.git
+              pkgs.nix
+              pkgs.coreutils
+              pkgs.util-linux
+              pkgs.findutils
+              pkgs.gnugrep
+              pkgs.gawk
+              pkgs.ncurses
+            ]}
+        '';
+      })
+    ];
+
+    # Optional: handy alias
+    environment.shellAliases.nyx-tui = "nyx-tui";
+  };
+}
+
+---
+
+# flake.nix additions (package + app)
+
+
+{
+  description = "Nyx Tools (with nyx-tui)";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    # ... your other inputs
+  };
+
+  outputs = { self, nixpkgs, ... }:
+  let
+    systems = [ "x86_64-linux" "aarch64-linux" ];
+    forEachSystem = f: builtins.listToAttrs (map (system: { name = system; value = f system; }) systems);
+  in
+  {
+    packages = forEachSystem (system:
+      let pkgs = import nixpkgs { inherit system; };
+      in {
+        nyx-tui = pkgs.stdenv.mkDerivation {
+          pname = "nyx-tui";
+          version = "0.1.0";
+          src = ./.;
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          installPhase = ''
+            mkdir -p $out/bin
+            cp ./nyx-tui.sh $out/bin/nyx-tui
+            chmod +x $out/bin/nyx-tui
+            makeWrapper $out/bin/nyx-tui $out/bin/nyx-tui \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.dialog pkgs.git pkgs.nix pkgs.coreutils ]}
+          '';
+        };
+      });
+
+    apps = forEachSystem (system: let pkgs = import nixpkgs { inherit system; }; in {
+      nyx-tui = {
+        type = "app";
+        program = "${self.packages.${system}.nyx-tui}/bin/nyx-tui";
+      };
+    });
+
+    # If you use NixOS modules via flake:
+    nixosModules.nyx-tui = import ./nyx-tui.nix;
+  };
+}
+
