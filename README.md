@@ -139,11 +139,6 @@ See `other/example/example-home.nix` for a working example.
 | `enableFormatting` | Auto-format Nix files before rebuild   | `false`                   |
 | `formatter`        | Formatter to use (e.g., `alejandra`)   | —                         |
 | `enableAlias`      | Add CLI alias for rebuild              | `false`                   |
-| `autoPushLog`      | Push rebuild logs to GitHub            | `false`                   |
-| `autoPushNixDir`   | Push flake dir to GitHub after rebuild | `false`                   |
-| `username`         | Username the module applies to         | Required                  |
-| `nixDirectory`     | Full path to the Nix flake directory   | Required                  |
-| `logDir`           | Where to store logs                    | `~/.nyx/nyx-rebuild/logs` |
 
 ---
 
@@ -152,12 +147,8 @@ See `other/example/example-home.nix` for a working example.
 | Option            | Description                   | Default                   |
 | ----------------- | ----------------------------- | ------------------------- |
 | `enable`          | Enable the module             | `false`                   |
-| `autoPush`        | Push logs to GitHub           | `false`                   |
 | `keepGenerations` | Number of generations to keep | `5`                       |
 | `enableAlias`     | Add CLI alias for cleanup     | `false`                   |
-| `username`        | User this applies to          | Required                  |
-| `nixDirectory`    | Full path to flake dir        | Required                  |
-| `logDir`          | Path to store logs            | `~/.nyx/nyx-cleanup/logs` |
 
 ---
 
