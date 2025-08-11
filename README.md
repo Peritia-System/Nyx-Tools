@@ -147,6 +147,56 @@ See `other/example/example-home.nix` for a working example.
 
 ---
 
+### 4. Rebuild and you can use it:
+
+```bash
+# to just do a simple rebuild you can:
+nyx-rebuild
+
+# to see the available options: 
+$ nyx-rebuild -h
+nyx-rebuild [--repair] [--update]
+
+  --repair   Stage & commit the nix_dir with "rebuild - repair <timestamp>"
+             and remove any unfinished logs (Current-Error*.txt and rebuild-*.log
+             that are not final nixos-gen_* logs).
+
+  --update   Before rebuilding, update the flake in nix_dir using:
+               nix flake update
+
+# to cleanup old configurations:
+nyx-cleanup
+
+# And to see the other options:
+nyx-cleanup -h
+nyx-cleanup [--dry-run] [--keep N]
+
+Prunes old *system* generations, runs GC (and store optimise), and tidies logs.
+
+Options:
+  --dry-run       Show actions without doing them.
+  --keep N        Override configured generations to keep (default: 5).
+  -h, --help      Show this help.
+
+
+# For nyx-tui run simply 
+nyx-tui
+
+# or for a small startup animation
+nyx-tui --pretty
+
+
+```
+
+##### Showcase
+<details>
+<summary>nyx-tui</summary>
+[Video](other/Ressources/showcase.mp4)
+
+</details>
+
+---
+
 ## Module Options
 
 ### `nyx.nyx-rebuild`
