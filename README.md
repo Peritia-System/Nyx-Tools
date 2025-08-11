@@ -1,85 +1,41 @@
-# Nyx: NixOS System Management Toolkit
+Nyx — NixOS System Management Toolkit
 
-**Nyx** is a modular toolkit that simplifies and automates various NixOS system management tasks, from enhanced rebuilds to cleanup and shell customization.
+**Nyx** is a modular toolkit that makes managing NixOS easier — faster rebuilds, automated cleanup, shell customization, and an optional TUI interface.
 
 ---
 
 ## Features
 
-* **Enhanced NixOS Rebuilds** — via `nyx-rebuild.nix`
-* **Automated System Cleanup** — via `nyx-cleanup.nix`
-* **Shell Customization & Tooling** — banners and helpers via `nyx-tool.nix`
-* **All-in-One Integration** — enable everything with a single import: `nyx.nix`
+* **Enhanced Rebuilds** — Git auto-push, optional formatting, rebuild logs
+* **Automated Cleanup** — prune old generations, GC, optimize store
+* **Shell Tools** — banners, helpers, aliases
+* **TUI Interface** — simple, pretty menu for all Nyx tools
+* **One Import to Enable All** — `nyx.nix`
 
 ---
 
-## Dependencies
+## Requirements
 
-| Tool / Service       | Required | Notes                                                    |
-| -------------------- | -------- | -------------------------------------------------------- |
-| NixOS / Nix          | ✅        | Nyx is designed for NixOS or compatible Nix environments |
-| `sudo` access        | ✅        | Needed for system-level operations                       |
-| Home Manager         | ✅        | Integrates via `home.nix`                                |
-| Git                  | ✅        | Required for `autoPush*` features (must be a Git repo)   |
-| `nix-output-monitor` | ✅        | Automatically provided by Nyx                            |
-
----
-
-## Project Structure
-
-```
-Nyx-Tools
-├── nyx
-│   ├── bash
-│   │   ├── nyx-cleanup.sh
-│   │   ├── nyx-rebuild.sh
-│   │   ├── nyx-tool.sh
-│   │   └── nyx-tui.sh
-│   ├── default.nix
-│   ├── nyx-cleanup.nix
-│   ├── nyx-rebuild.nix
-│   ├── nyx-tool.nix
-│   └── nyx-tui.nix
-└── other/
-```
+| Tool / Service       | Required | Notes                            |
+| -------------------- | -------- | -------------------------------- |
+| NixOS / Nix          | ✅        | Core platform                    |
+| `sudo`               | ✅        | Needed for system changes        |
+| Home Manager         | ✅        | For integration                  |
+| Git                  | ✅        | Required for `autoPush` features |
+| `nix-output-monitor` | ✅        | Installed automatically by Nyx   |
 
 ---
 
-## How It Works
+## Quick Install
 
-* **`default.nix`**  
-  Importing the other Modules.
-
-* **`nyx-tool.nix`**  
-  Sets up shell visuals (e.g. banners) and Zsh helpers.
-
-* **`nyx-rebuild.nix`**  
-  Enhances `nixos-rebuild` with:
-
-  * Git auto-push support
-  * Optional code formatting before builds
-  * Rebuild logging
-
-* **`nyx-cleanup.nix`**  
-  Automates system cleanup and tracks logs (optionally pushes to GitHub).
-
-* **`nyx-tui.nix`**  
-  Making a TUI for the other tools.
-
-
----
-
-## Quick Start
-
-### 1. Add Nyx to your Flake
+### 1. Add Nyx to your flake
 
 ```nix
 # flake.nix
 {
   inputs.nyx.url = "github:Peritia-System/Nyx-Tools";
 
-  outputs = inputs @ { nixpkgs, nyx, ... }:
-  {
+  outputs = inputs @ { nixpkgs, nyx, ... }: {
     nixosConfigurations.HOSTNAME = nixpkgs.lib.nixosSystem {
       modules = [ ./configuration.nix ];
     };
@@ -87,175 +43,89 @@ Nyx-Tools
 }
 ```
 
-### 2. Import Nyx into Home Manager
+### 2. Import in Home Manager
 
 ```nix
 # home.nix
 {
-  config,
-  inputs,
-  ...
-}:
-{
-  imports = [
-    inputs.nyx.homeManagerModules.default
-  ];
+  imports = [ inputs.nyx.homeManagerModules.default ];
 }
 ```
 
-### 3. Enable Desired Modules
+### 3. Enable modules
 
 ```nix
-{
-  nyx = {
-    
-    enable = true;
-    inherit username nixDirectory;
-    logDir = "/home/${username}/.nyx/logs";
-    autoPush = false;
+nyx = {
+  enable     = true;
+  username   = "alex";
+  nixDirectory = "/home/alex/NixOS"; # full path to flake repo
+  logDir     = "/home/alex/.nyx/logs";
+  autoPush   = false;
 
-    nyx-rebuild = {
-      enable = true;
-      editor = "nvim";
-      formatter = "alejandra";
-      enableAlias = false;
-      startEditor = false;
-    };
-    
-    nyx-cleanup = {
-      enable = true;
-      keepGenerations = 5;
-      enableAlias = false;
-    };
-    
-    nyx-tool = {
-      enable = true;
-    };
-
-    nyx-tui = {
-      enable          = true;
-      enableAlias     = false;
-    };
-
-  };
-}
+  nyx-tool.enable    = true;   # must be enabled for others
+  nyx-rebuild.enable = true;
+  nyx-cleanup.enable = true;
+  nyx-tui.enable     = true;
+};
 ```
-
-> ⚠️ **Note**: `nixDirectory` must be a **full path** to your flake repo (e.g., `/home/${username}/NixOS/Nyx-Tools`).
-
-See `other/example/example-home.nix` for a working example.
 
 ---
 
-### 4. Rebuild and you can use it:
+## Usage
 
 ```bash
-# to just do a simple rebuild you can:
-nyx-rebuild
+nyx-rebuild --update   # Update flake + rebuild
+nyx-rebuild --repair   # Repair and clean unfinished logs
 
-# to see the available options: 
-$ nyx-rebuild -h
-nyx-rebuild [--repair] [--update]
+nyx-cleanup            # Remove old generations + GC
+nyx-cleanup --dry-run  # Preview cleanup
 
-  --repair   Stage & commit the nix_dir with "rebuild - repair <timestamp>"
-             and remove any unfinished logs (Current-Error*.txt and rebuild-*.log
-             that are not final nixos-gen_* logs).
-
-  --update   Before rebuilding, update the flake in nix_dir using:
-               nix flake update
-
-# to cleanup old configurations:
-nyx-cleanup
-
-# And to see the other options:
-nyx-cleanup -h
-nyx-cleanup [--dry-run] [--keep N]
-
-Prunes old *system* generations, runs GC (and store optimise), and tidies logs.
-
-Options:
-  --dry-run       Show actions without doing them.
-  --keep N        Override configured generations to keep (default: 5).
-  -h, --help      Show this help.
-
-
-# For nyx-tui run simply 
-nyx-tui
-
-# or for a small startup animation
-nyx-tui --pretty
-
-
+nyx-tui                # Launch TUI
+nyx-tui --pretty       # TUI with animation
 ```
 
-##### Showcase
+---
+
+## Showcase
+
 <details>
 <summary>nyx-tui</summary>
-[Video](other/Ressources/showcase.mp4)
+
+<video src="other/Ressources/showcase.mp4" controls autoplay loop muted width="640">
+  Your browser does not support the video tag.
+</video>
 
 </details>
+
 
 ---
 
 ## Module Options
 
-### `nyx.nyx-rebuild`
-
-| Option             | Description                            | Default                   |
-| ------------------ | -------------------------------------- | ------------------------- |
-| `enable`           | Enable the module                      | `false`                   |
-| `startEditor`      | Launch editor before rebuilding        | `false`                   |
-| `editor`           | Editor to use (`vim`, `nvim`, etc.)    | —                         |
-| `enableFormatting` | Auto-format Nix files before rebuild   | `false`                   |
-| `formatter`        | Formatter to use (e.g., `alejandra`)   | —                         |
-| `enableAlias`      | Add CLI alias for rebuild              | `false`                   |
+| Module        | Key Options                               |
+| ------------- | ----------------------------------------- |
+| `nyx-rebuild` | `startEditor`, `formatter`, `enableAlias` |
+| `nyx-cleanup` | `keepGenerations`, `enableAlias`          |
+| `nyx-tui`     | `enableAlias`                             |
+| `nyx-tool`    | Shell banners & helpers (base req)        |
 
 ---
 
-### `nyx.nyx-cleanup`
+## Tips
 
-| Option            | Description                   | Default                   |
-| ----------------- | ----------------------------- | ------------------------- |
-| `enable`          | Enable the module             | `false`                   |
-| `keepGenerations` | Number of generations to keep | `5`                       |
-| `enableAlias`     | Add CLI alias for cleanup     | `false`                   |
+* `nyx-tool` **must be enabled** for other modules.
+* `nixDirectory` must be a full Git repo path for `autoPush` to work.
+* See `other/example/example-home.nix` for a full working setup.
 
 ---
 
-### `nyx.nyx-tui`
+## More Info 
 
-| Option            | Description                   | Default                   |
-| ----------------- | ----------------------------- | ------------------------- |
-| `enable`          | Enable the module             | `false`                   |
-| `enableAlias`     | Add CLI alias for the tui     | `false`                   |
+refer to: **[Documentaion](./Documentation/main.md)**
+
 
 ---
 
-### `nyx.nyx-tool`
 
-| Option   | Description                     | Default |
-| -------- | ------------------------------- | ------- |
-| `enable` | Enables banners and shell tools | `false` |
-
-> 💡 `nyx-tool` must be enabled for other modules to function properly.
-
----
-
-## Contributing
-
-You're welcome to contribute:
-
-* New features & modules
-* Tooling improvements
-* Bug fixes or typos
-
-Open an issue or pull request at:
-
-👉 [https://github.com/Peritia-System/Nyx-Tools](https://github.com/Peritia-System/Nyx-Tools)
-
----
-
-## License
-
-Licensed under the [MIT License](./LICENSE)
-
+## 📜 License
+[MIT](./LICENSE) — Contributions welcome!
