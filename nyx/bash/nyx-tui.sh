@@ -251,6 +251,15 @@ check_last_log_for_error() {
       d_textbox "Last Build Error" "$tmp"
       rm -f "$tmp"
       return 1
+    elif grep -qi "failed" "$lastlog"; then
+      local tmp
+      tmp="$(mktemp)"
+      echo "Error detected in: $(basename "$lastlog")" > "$tmp"
+      echo >> "$tmp"
+      grep -A99999 -i "error" "$lastlog" >> "$tmp"
+      d_textbox "Last Build Error" "$tmp"
+      rm -f "$tmp"
+      return 1
     fi
   fi
   return 0

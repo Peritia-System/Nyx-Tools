@@ -16,7 +16,7 @@ let
       [
         (toString nyxCfg.logDir)
         (toString nyxCfg.nixDirectory)
-        "1.1.0"
+        "1.1.1"
         "${pkgs.dialog}/bin/dialog"
       ]
       src;
