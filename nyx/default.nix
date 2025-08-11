@@ -39,6 +39,8 @@ with lib;
     ./nyx-rebuild.nix
     ./nyx-cleanup.nix
     ./nyx-tool.nix
+    ./nyx-tui.nix
+
   ];
 
   ################################################################
@@ -47,6 +49,7 @@ with lib;
   config = mkIf (!config.nyx.enable) {
     nyx.nyx-rebuild.enable = false;
     nyx.nyx-cleanup.enable = false;
+    nyx.nyx-tui.enable = false;
     nyx.nyx-tool.enable = false;
   };
 

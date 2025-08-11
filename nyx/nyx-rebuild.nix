@@ -24,7 +24,7 @@ let
         "${pkgs.git}/bin/git"
         "${pkgs.nix-output-monitor}/bin/nom"
         (if nyxCfg.autoPush then "true" else "false")
-        "1.0.0"
+        "1.1.0"
       ]
       src;
 in

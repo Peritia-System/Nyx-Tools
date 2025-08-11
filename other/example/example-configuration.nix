@@ -20,7 +20,10 @@ in {
 home-manager = {
   useGlobalPkgs = true;
   useUserPackages = true;
-  backupFileExtension = "delme-HMbackup";
+  backupFileExtension = "delme-HMbackup"; 
+  # Please use this backup File Extension to ensure that the bug won't cause any problems
+  # nyx-rebuild deletes the backups on each rebuild before rebuilding
+  # HM Bug: https://discourse.nixos.org/t/nixos-rebuild-fails-on-backup-up-config-file-by-home-manager/45992
   users.${username} = import ./home.nix;
 
   extraSpecialArgs = {

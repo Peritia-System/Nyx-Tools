@@ -41,6 +41,10 @@ nyx = {
     enable = true;
   };
 
+  nyx-tui = {
+    enable          = true;
+    enableAlias     = false;
+  };
 }
   ################################################################
   # Basic Home Manager Setup

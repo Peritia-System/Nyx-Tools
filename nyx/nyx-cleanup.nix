@@ -18,7 +18,7 @@ let
         (toString (cfg.keepGenerations or 5))
         (if (nyxCfg.autoPush or false) then "true" else "false")
         "${pkgs.git}/bin/git"
-        "1.0.0"
+        "1.1.0"
       ]
       src;
 in

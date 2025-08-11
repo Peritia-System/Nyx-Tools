@@ -1,19 +1,19 @@
-# ⚙️ Nyx: NixOS System Management Toolkit
+# Nyx: NixOS System Management Toolkit
 
 **Nyx** is a modular toolkit that simplifies and automates various NixOS system management tasks, from enhanced rebuilds to cleanup and shell customization.
 
 ---
 
-## ✨ Features
+## Features
 
-* 🔁 **Enhanced NixOS Rebuilds** — via `nyx-rebuild.nix`
-* 🧹 **Automated System Cleanup** — via `nyx-cleanup.nix`
-* 🛠️ **Shell Customization & Tooling** — banners and helpers via `nyx-tool.nix`
-* 🧩 **All-in-One Integration** — enable everything with a single import: `nyx.nix`
+* **Enhanced NixOS Rebuilds** — via `nyx-rebuild.nix`
+* **Automated System Cleanup** — via `nyx-cleanup.nix`
+* **Shell Customization & Tooling** — banners and helpers via `nyx-tool.nix`
+* **All-in-One Integration** — enable everything with a single import: `nyx.nix`
 
 ---
 
-## 📦 Dependencies
+## Dependencies
 
 | Tool / Service       | Required | Notes                                                    |
 | -------------------- | -------- | -------------------------------------------------------- |
@@ -25,37 +25,51 @@
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Nyx-Tools
-├── default.nix          # Top-level module
-├── nyx-tool.nix         # Shell enhancements and banners
-├── nyx-rebuild.nix      # Enhanced nixos-rebuild logic
-├── nyx-cleanup.nix      # System cleanup automation
-└── other/               # Legacy scripts (to be removed soon)
+├── nyx
+│   ├── bash
+│   │   ├── nyx-cleanup.sh
+│   │   ├── nyx-rebuild.sh
+│   │   ├── nyx-tool.sh
+│   │   └── nyx-tui.sh
+│   ├── default.nix
+│   ├── nyx-cleanup.nix
+│   ├── nyx-rebuild.nix
+│   ├── nyx-tool.nix
+│   └── nyx-tui.nix
+└── other/
 ```
 
 ---
 
-## ⚙️ How It Works
+## How It Works
 
-* **`nyx-tool.nix`**
+* **`default.nix`**  
+  Importing the other Modules.
+
+* **`nyx-tool.nix`**  
   Sets up shell visuals (e.g. banners) and Zsh helpers.
 
-* **`nyx-rebuild.nix`**
+* **`nyx-rebuild.nix`**  
   Enhances `nixos-rebuild` with:
 
   * Git auto-push support
   * Optional code formatting before builds
   * Rebuild logging
 
-* **`nyx-cleanup.nix`**
+* **`nyx-cleanup.nix`**  
   Automates system cleanup and tracks logs (optionally pushes to GitHub).
+
+* **`nyx-tui.nix`**  
+  Making a TUI for the other tools.
+
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Add Nyx to your Flake
 
@@ -117,6 +131,12 @@ Nyx-Tools
     nyx-tool = {
       enable = true;
     };
+
+    nyx-tui = {
+      enable          = true;
+      enableAlias     = false;
+    };
+
   };
 }
 ```
@@ -127,9 +147,9 @@ See `other/example/example-home.nix` for a working example.
 
 ---
 
-## 🔧 Module Options
+## Module Options
 
-### `modules.nyx-rebuild`
+### `nyx.nyx-rebuild`
 
 | Option             | Description                            | Default                   |
 | ------------------ | -------------------------------------- | ------------------------- |
@@ -142,7 +162,7 @@ See `other/example/example-home.nix` for a working example.
 
 ---
 
-### `modules.nyx-cleanup`
+### `nyx.nyx-cleanup`
 
 | Option            | Description                   | Default                   |
 | ----------------- | ----------------------------- | ------------------------- |
@@ -152,7 +172,16 @@ See `other/example/example-home.nix` for a working example.
 
 ---
 
-### `modules.nyx-tool`
+### `nyx.nyx-tui`
+
+| Option            | Description                   | Default                   |
+| ----------------- | ----------------------------- | ------------------------- |
+| `enable`          | Enable the module             | `false`                   |
+| `enableAlias`     | Add CLI alias for the tui     | `false`                   |
+
+---
+
+### `nyx.nyx-tool`
 
 | Option   | Description                     | Default |
 | -------- | ------------------------------- | ------- |
@@ -162,7 +191,7 @@ See `other/example/example-home.nix` for a working example.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 You're welcome to contribute:
 
@@ -176,7 +205,7 @@ Open an issue or pull request at:
 
 ---
 
-## 📄 License
+## License
 
 Licensed under the [MIT License](./LICENSE)
 
