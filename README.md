@@ -6,11 +6,11 @@ Nyx — NixOS System Management Toolkit
 
 ## Features
 
-* **Enhanced Rebuilds** — Git auto-push, optional formatting, rebuild logs
-* **Automated Cleanup** — prune old generations, GC, optimize store
-* **Shell Tools** — banners, helpers, aliases
-* **TUI Interface** — simple, pretty menu for all Nyx tools
-* **One Import to Enable All** — `nyx.nix`
+* **Enhanced Rebuilds** — Git auto-push, optional code formatting, and rebuild logs.
+* **Automated Cleanup** — Prune old generations, run garbage collection, and optimize the Nix store.
+* **Shell Tools** — Custom banners, helper scripts, and handy aliases.
+* **TUI Interface** — A clean, simple, and user-friendly menu for all Nyx tools.
+* **Roadmap** — See planned features in the [Roadmap](./Roadmap.md).
 
 ---
 
