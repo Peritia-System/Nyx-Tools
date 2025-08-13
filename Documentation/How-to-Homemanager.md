@@ -1,4 +1,4 @@
-# How-to: Home Manager → Legacy Nyx branch
+# How-to: Home Manager → Legacy Nyx
 
 **Why:** Nyx is moving to a NixOS module. If you’re on Home Manager today and want stability, pin Nyx to the “legacy” state (by `rev`) or a local checkout.
 
