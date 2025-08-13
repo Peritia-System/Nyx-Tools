@@ -10,7 +10,6 @@
 | **Update selection**                                          | Allow choosing which inputs to update                        | [no\_brains101](https://www.reddit.com/r/NixOS/comments/1mncfvd/comment/n86hc7b) |
 | **Opt-in commits**                                            | Don’t commit changes automatically; make it optional         | [no\_brains101](https://www.reddit.com/r/NixOS/comments/1mncfvd/comment/n86hc7b) |
 | **Starter template initialization**                           | Provide a way to initialize a starter template for new users | [jellydn](https://www.reddit.com/r/NixOS/comments/1mncfvd/comment/n87hewi)       |
-| **Better Readability for the Build log**                   |  use $PAGER or directly less to make it easier to scroll through the log in the TUI | [rtunreal@WGE-Discorserver](https://discord.gg/8dAgzjJphj)       |
 
 ---
 
@@ -19,4 +18,4 @@
 | Feature / Fix                | Description                                | Requested By                                                                    |
 | ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
 | **Add** `nixosModule` output | Support a NixOS module output in the flake | [BizNameTaken](https://www.reddit.com/r/NixOS/comments/1mncfvd/comment/n8499d1) |
-
+| **Better Readability for the Build log**                   |  use $PAGER or directly less to make it easier to scroll through the log in the TUI | [rtunreal@WGE-Discorserver](https://discord.gg/8dAgzjJphj)       |
