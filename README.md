@@ -1,4 +1,4 @@
-Nyx — NixOS System Management Toolkit
+# Nyx — NixOS System Management Toolkit
 
 **Nyx** is a modular toolkit that makes managing NixOS easier — faster rebuilds, automated cleanup, shell customization, and an optional TUI interface.
 
