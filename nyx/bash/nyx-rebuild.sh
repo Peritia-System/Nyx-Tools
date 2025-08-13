@@ -14,6 +14,7 @@ nyx-rebuild() {
   git_bin="@GIT_BIN@"
   nom_bin="@NOM_BIN@"
   auto_push="@AUTO_PUSH@"
+  auto_commit="@AUTO_COMMIT@"
   version="@VERSION@"
 
   ########################################################################
@@ -102,15 +103,21 @@ EOF
   }
 
   git_commit_if_staged() {
-    # commit if there is something staged; ignore empty
-    if ! g diff --cached --quiet; then
-      g commit -m "$1" || true
-    fi
+        # commit if there is something staged; ignore empty
+        if ! g diff --cached --quiet; then
+          git_commit_message "$1" || true
+        fi
+
   }
 
   git_commit_message() {
+    
     local msg="$1"
-    g commit -m "$msg"
+    if [[ "${auto_commit}" == "true" ]]; then
+       g commit -m "$msg"
+    else 
+      echo "not committing \$auto_commit = $auto_commit"
+    fi
   }
 
   git_push_if_enabled() {
@@ -126,50 +133,6 @@ EOF
     if git_commit_if_staged "$msg"; then
       git_push_if_enabled
     fi
-  }
-
-
-  ########################################################################
-  # REPAIR MODE
-  ########################################################################
-  repair() {
-    cd "$nix_dir" || { echo "ERROR: Cannot cd into nix_dir: $nix_dir" >&2; return 1; }
-
-    ts="$(date '+%Y-%m-%d_%H-%M-%S')"
-    echo "Starting repair at ${ts}..."
-
-    # Remove unfinished logs (not final logs)
-    log_dir_rebuild="${log_dir}/rebuild"
-    if [[ -d "$log_dir_rebuild" ]]; then
-      echo "Checking for unfinished logs in: $log_dir_rebuild"
-      if find "$log_dir_rebuild" -type f \
-        ! -name 'nixos-gen_*' \
-        \( -name 'rebuild-*.log' -o -name 'Current-Error*.txt' \) | grep -q .; then
-        echo "Removing unfinished logs..."
-        find "$log_dir_rebuild" -type f \
-          ! -name 'nixos-gen_*' \
-          \( -name 'rebuild-*.log' -o -name 'Current-Error*.txt' \) \
-          -exec rm -v {} +
-        echo "Unfinished logs removed."
-      else
-        echo "No unfinished logs found."
-      fi
-    else
-      echo "No rebuild log directory found."
-    fi
-
-    echo "Staging all changes in $nix_dir..."
-    g add -A
-
-    # Oed; avoid set nly commit if something is stag-e failure on empty commit
-    if ! g diff --cached --quiet --; then
-      echo "Committing repair changes..."
-      g commit -m "rebuild - repair ${ts}"
-      echo "Repair commit created."
-    else
-      echo "No changes to commit."
-    fi
-
   }
 
 
@@ -206,6 +169,61 @@ EOF
     ( "$@" 2>&1; echo $? > "$tmp" ) | tee -a "$build_log" | $nom_bin
     local s; s=$(<"$tmp"); rm "$tmp"; return "$s"
   }
+
+  ########################################################################
+  # Check on auto_commit
+  ########################################################################
+
+  # If auto_commit is false, disable auto_push
+  if [[ "${auto_commit}" != "true" ]]; then
+    auto_push="false"
+    console-log "${YELLOW}auto_push disabled because auto_commit is false${RESET}"
+  fi
+
+  ########################################################################
+  # REPAIR MODE
+  ########################################################################
+  repair() {
+    cd "$nix_dir" || { echo "ERROR: Cannot cd into nix_dir: $nix_dir" >&2; return 1; }
+
+    ts="$(date '+%Y-%m-%d_%H-%M-%S')"
+    echo "Starting repair at ${ts}..."
+
+    # Remove unfinished logs (not final logs)
+    log_dir_rebuild="${log_dir}/rebuild"
+    if [[ -d "$log_dir_rebuild" ]]; then
+      echo "Checking for unfinished logs in: $log_dir_rebuild"
+      if find "$log_dir_rebuild" -type f \
+        ! -name 'nixos-gen_*' \
+        \( -name 'rebuild-*.log' -o -name 'Current-Error*.txt' \) | grep -q .; then
+        echo "Removing unfinished logs..."
+        find "$log_dir_rebuild" -type f \
+          ! -name 'nixos-gen_*' \
+          \( -name 'rebuild-*.log' -o -name 'Current-Error*.txt' \) \
+          -exec rm -v {} +
+        echo "Unfinished logs removed."
+      else
+        echo "No unfinished logs found."
+      fi
+    else
+      echo "No rebuild log directory found."
+    fi
+
+    echo "Staging all changes in $nix_dir..."
+    g add -A
+    if [[ "${auto_commit}" == "true" ]]; then
+      # Oed; avoid set nly commit if something is stag-e failure on empty commit
+      if ! g diff --cached --quiet --; then
+        echo "Committing repair changes..."
+        g commit -m "rebuild - repair ${ts}"
+        echo "Repair commit created."
+      else
+        echo "No changes to commit."
+      fi
+    fi
+  }
+
+
 
   ########################################################################
   # EARLY REPAIR MODE CHECK
@@ -349,7 +367,7 @@ EOF
 
     # capture and push error artifacts
     git_add_path "$log_dir_rebuild"
-    g commit -m "Rebuild failed: errors logged" || true
+    git_commit_message "Rebuild failed: errors logged" || true
     git_push_if_enabled
 
     exit_code=1
