@@ -12,7 +12,7 @@ let
     builtins.replaceStrings
       [
         "@NIX_DIR@" "@LOG_DIR@" "@START_EDITOR@" "@ENABLE_FORMATTING@"
-        "@EDITOR@" "@FORMATTER@" "@GIT_BIN@" "@NOM_BIN@" "@AUTO_PUSH@" "@VERSION@" 
+        "@EDITOR@" "@FORMATTER@" "@GIT_BIN@" "@NOM_BIN@" "@AUTO_PUSH@" "@AUTO_COMMIT@" "@VERSION@" 
       ]
       [
         (toString nyxCfg.nixDirectory)
@@ -24,6 +24,7 @@ let
         "${pkgs.git}/bin/git"
         "${pkgs.nix-output-monitor}/bin/nom"
         (if nyxCfg.autoPush then "true" else "false")
+        (if nyxCfg.autoCommit then "true" else "false")
         "1.2.0"
       ]
       src;

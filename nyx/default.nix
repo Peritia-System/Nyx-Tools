@@ -1,4 +1,4 @@
-# nyx.nix
+# default.nix
 { config, lib, ... }:
 with lib;
 
@@ -30,6 +30,12 @@ with lib;
       default = false;
       description = "Automatically push changes after rebuild/cleanup";
     };
+
+    autoCommit = mkOption {
+      type = types.bool;
+      default = true;
+      description = "Automatically commit changes after rebuild/cleanup";
+    };
   };
 
   ################################################################
@@ -40,6 +46,7 @@ with lib;
     ./nyx-cleanup.nix
     ./nyx-tool.nix
     ./nyx-tui.nix
+    ./nyx-lib.nix
 
   ];
 
