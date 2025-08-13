@@ -226,8 +226,7 @@ action_view_logs() {
     tmp="$(mktemp)"
     lastlog="$(find "$log_dir" -type f -name '*.log' -printf '%T@ %p\n' 2>/dev/null | sort -nr | awk 'NR==1{print $2}')"
     if [[ -n "${lastlog:-}" && -f "$lastlog" ]]; then
-      tail -n 300 "$lastlog" > "$tmp"
-      d_textbox "Last Rebuild Log: $(basename "$lastlog")" "$tmp"
+      less <"$lastlog"
     else
       d_msg "No logs found in ${log_dir}"
     fi
