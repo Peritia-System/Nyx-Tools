@@ -16,6 +16,8 @@ nix_dir="@NIX_DIR@"
 version="@VERSION@"
 dialog_bin="${DIALOG_BIN:-@DIALOG_BIN@}"
 
+PAGER="${PAGER:=less}"
+
 # Fallbacks if Nix didn't substitute
 if [[ -z "${dialog_bin//@DIALOG_BIN@/}" ]]; then
   # If placeholder remained, try common defaults
@@ -226,7 +228,7 @@ action_view_logs() {
     tmp="$(mktemp)"
     lastlog="$(find "$log_dir" -type f -name '*.log' -printf '%T@ %p\n' 2>/dev/null | sort -nr | awk 'NR==1{print $2}')"
     if [[ -n "${lastlog:-}" && -f "$lastlog" ]]; then
-      less <"$lastlog"
+      $PAGER <"$lastlog"
     else
       d_msg "No logs found in ${log_dir}"
     fi

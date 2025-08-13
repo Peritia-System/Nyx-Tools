@@ -11,7 +11,7 @@
 
 ## nyx-tui - Version 1.2.1:
 - Added better Readability for the Build log   
-    use `less` to make it easier to scroll through the log in the TUI   
-    ~ Thanks to *rtunreal*
+    use $PAGER (or fallback: `less`) to make it easier to scroll through the log in the TUI   
+    ~ Thanks to *RTUnreal*
 
 
