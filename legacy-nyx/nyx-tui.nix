@@ -16,7 +16,7 @@ let
       [
         (toString nyxCfg.logDir)
         (toString nyxCfg.nixDirectory)
-        "1.2.0"
+        "DEPRECATED - check Info"
         "${pkgs.dialog}/bin/dialog"
       ]
       src;

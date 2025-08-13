@@ -18,7 +18,7 @@ let
         (toString (cfg.keepGenerations or 5))
         (if (nyxCfg.autoPush or false) then "true" else "false")
         "${pkgs.git}/bin/git"
-        "1.2.0"
+        "DEPRECATED - check Info"
       ]
       src;
 in
