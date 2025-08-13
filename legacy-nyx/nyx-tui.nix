@@ -24,7 +24,6 @@ in
 {
   options.nyx."nyx-tui" = {
     enable = lib.mkEnableOption "Enable nyx-tui script";
-
     enableAlias = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -33,12 +32,14 @@ in
   };
 
   config = lib.mkIf ((nyxCfg.enable or false) && (cfg.enable or false)) {
-    environment.systemPackages = [
+    home.packages = [
       (pkgs.writeShellScriptBin "nyx-tui" tuiScript)
     ];
 
-    environment.shellAliases = lib.mkIf (cfg.enableAlias or true) {
+    home.shellAliases = lib.mkIf (cfg.enableAlias or true) {
       nyx = "nyx-tui";
     };
   };
 }
+
+

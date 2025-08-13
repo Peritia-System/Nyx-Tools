@@ -16,6 +16,7 @@
 
 ```
 Nyx-Tools
+├── legacy-nyx              # will be removed
 ├── nyx
 │   ├── bash
 │   │   ├── nyx-cleanup.sh
@@ -28,6 +29,8 @@ Nyx-Tools
 │   ├── nyx-tool.nix
 │   └── nyx-tui.nix
 └── other/
+      ├── example            # Example configurations
+      └── ...                # Other
 ```
 
 ---
@@ -74,18 +77,19 @@ Nyx-Tools
 }
 ```
 
-### 2. Import Nyx into Home Manager
+### 2. Import Nyx into configuration-nix
 
 ```nix
-# home.nix
+# configuration-nix
 {
   config,
   inputs,
+  # and all the others you have
   ...
 }:
 {
   imports = [
-    inputs.nyx.homeManagerModules.default
+    inputs.nyx.nixosModules.default
   ];
 }
 ```
@@ -97,7 +101,12 @@ Nyx-Tools
   nyx = {
     
     enable = true;
-    inherit username nixDirectory;
+    # Your username
+    username = "alex";
+    # Set this to where you have your NixOS Configuration. Standard /etc/nixos
+    nixDirectory = "/home/${username}/my-nixos-config"; 
+    # or inherit it
+    # inherit username nixDirectory;
     logDir = "/home/${username}/.nyx/logs";
     autoPush = false;
 
@@ -116,7 +125,7 @@ Nyx-Tools
     };
     
     nyx-tool = {
-      enable = true;
+      enable = true;  # must be enabled for others
     };
 
     nyx-tui = {
@@ -128,9 +137,9 @@ Nyx-Tools
 }
 ```
 
-> ⚠️ **Note**: `nixDirectory` must be a **full path** to your flake repo (e.g., `/home/${username}/NixOS/Nyx-Tools`).
+> ⚠️ **Note**: `nixDirectory` must be a **full path** to your flake repo (e.g., `/home/${username}/NixOS`).
 
-See `other/example/example-home.nix` for a working example.
+See [Example-Configuration.nix](./../other/example/example-configuration.nix)/[Example-Flake.nix](./../other/example/example-flake.nix) for a working example.
 
 ---
 
@@ -174,8 +183,6 @@ nyx-tui --pretty
 
 
 ```
-
-
 
 ---
 

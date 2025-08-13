@@ -40,14 +40,14 @@ in
   };
 
   config = lib.mkIf (nyxCfg.enable && cfg.enable) {
-    environment.systemPackages =
+    home.packages =
       lib.optionals (cfg.enableFormatting && cfg.formatter == "alejandra") [ pkgs.alejandra ]
       ++ [
         # Ensure nyx-tool exists if you call it in the script
         (pkgs.writeShellScriptBin "nyx-rebuild" rebuiltScript)
       ];
 
-    environment.shellAliases = lib.mkIf cfg.enableAlias {
+    home.shellAliases = lib.mkIf cfg.enableAlias {
       nr = "nyx-rebuild";
     };
   };

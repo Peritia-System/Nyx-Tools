@@ -20,7 +20,6 @@ Nyx — NixOS System Management Toolkit
 | -------------------- | -------- | -------------------------------- |
 | NixOS / Nix          | ✅        | Core platform                    |
 | `sudo`               | ✅        | Needed for system changes        |
-| Home Manager         | ✅        | For integration                  |
 | Git                  | ✅        | Required for `autoPush` features |
 | `nix-output-monitor` | ✅        | Installed automatically by Nyx   |
 
@@ -43,12 +42,12 @@ Nyx — NixOS System Management Toolkit
 }
 ```
 
-### 2. Import in Home Manager
+### 2. Import in your Configuration
 
 ```nix
-# home.nix
+# configuration.nix
 {
-  imports = [ inputs.nyx.homeManagerModules.default ];
+  imports = [ inputs.nyx.nixosModules.default ];
 }
 ```
 
@@ -68,6 +67,8 @@ nyx = {
   nyx-tui.enable     = true;
 };
 ```
+
+Checkout the [Documentation](./Documentation/main.md) for a full Guide
 
 ---
 
@@ -115,7 +116,6 @@ nyx-tui --pretty       # TUI with animation
 
 * `nyx-tool` **must be enabled** for other modules.
 * `nixDirectory` must be a full Git repo path for `autoPush` to work.
-* See `other/example/example-home.nix` for a full working setup.
 
 ---
 

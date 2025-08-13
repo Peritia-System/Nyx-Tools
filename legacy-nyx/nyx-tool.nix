@@ -18,7 +18,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [
+    home.packages = [
       pkgs.figlet
       (pkgs.writeShellScriptBin "nyx-tool"
         (builtins.readFile ./bash/nyx-tool.sh)

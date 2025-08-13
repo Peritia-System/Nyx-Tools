@@ -40,11 +40,11 @@ in
   };
 
   config = lib.mkIf ((nyxCfg.enable or false) && (cfg.enable or false)) {
-    environment.systemPackages = [
+    home.packages = [
       (pkgs.writeShellScriptBin "nyx-cleanup" cleanupScript)
     ];
 
-    environment.shellAliases = lib.mkIf (cfg.enableAlias or true) {
+    home.shellAliases = lib.mkIf (cfg.enableAlias or true) {
       nc = "nyx-cleanup";
     };
   };

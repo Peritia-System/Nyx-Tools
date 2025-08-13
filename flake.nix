@@ -6,6 +6,9 @@
   };
 
   outputs = { self, nixpkgs, ... }: {
-    homeManagerModules.default = import ./nyx;
+    homeManagerModules.default = import ./legacy-nyx;
+    homeManagerModules.legacy = import ./legacy-nyx;
+
+    nixosModules.default = import ./nyx;
   };
 }
