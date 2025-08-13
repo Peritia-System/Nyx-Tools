@@ -46,7 +46,7 @@ with lib;
     ./nyx-cleanup.nix
     ./nyx-tool.nix
     ./nyx-tui.nix
-    ./nyx-lib.nix
+    #./nyx-lib.nix
 
   ];
 
