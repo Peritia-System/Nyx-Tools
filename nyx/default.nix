@@ -25,6 +25,18 @@ with lib;
       description = "Directory for Nyx logs";
     };
 
+    autoStage = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Automatically stage changes after rebuild/cleanup";
+    };
+
+    autoCommit = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Automatically commit changes after rebuild/cleanup";
+    };
+    
     autoPush = mkOption {
       type = types.bool;
       default = false;
