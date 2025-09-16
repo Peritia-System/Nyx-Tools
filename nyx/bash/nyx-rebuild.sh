@@ -1,387 +1,593 @@
 #!/usr/bin/env bash
-nyx-rebuild() {
-  set -euo pipefail
 
-  ########################################################################
-  # CONFIGURATION (injected by Nix)
-  ########################################################################
-  nix_dir="@NIX_DIR@"
-  log_dir="@LOG_DIR@"
-  start_editor="@START_EDITOR@"
-  enable_formatting="@ENABLE_FORMATTING@"
-  editor_cmd="@EDITOR@"
-  formatter_cmd="@FORMATTER@"
-  git_bin="@GIT_BIN@"
-  nom_bin="@NOM_BIN@"
-  auto_push="@AUTO_PUSH@"
-  version="@VERSION@"
+########################################################################
+# CONFIGURATION
+########################################################################
+flake_directory="@FLAKE_DIRECTORY@"
+log_dir="@LOG_DIR@"
+enable_formatting="@ENABLE_FORMATTING@"
+formatter_cmd="@FORMATTER@"
+git_bin="@GIT_BIN@"
+nom_bin="@NOM_BIN@"
+auto_stage="@AUTO_STAGE@"
+auto_commit="@AUTO_COMMIT@"
+auto_push="@AUTO_PUSH@"
+auto_repair=true
+version="@VERSION@"
+rebuild_success=false
+nixos_generation=""
+git_starting_commit=""
 
-  ########################################################################
-  # ARGUMENT PARSING
-  ########################################################################
-  do_repair=false
-  do_update=false
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --repair) do_repair=true; shift;;
-      --update) do_update=true; shift;;
-      -h|--help)
-        cat <<EOF
-nyx-rebuild [--repair] [--update]
+debug_print_vars () {
+    log_debug_info "###### Debug - Vars ######"
+    log_debug_info "main() started with action: $rebuild_action, verbosity: $NYX_VERBOSITY"
+    log_debug_info "FLAKE_DIRECTORY: $flake_directory"
+    log_debug_info "LOG_DIR: $log_dir"
+    log_debug_info "ENABLE_FORMATTING: $enable_formatting"
+    log_debug_info "FORMATTER: $formatter_cmd"
+    log_debug_info "GIT_BIN: $git_bin"
+    log_debug_info "NOM_BIN: $nom_bin"
+    log_debug_info "AUTO_STAGE: $auto_stage"
+    log_debug_info "AUTO_COMMIT: $auto_commit"
+    log_debug_info "AUTO_PUSH: $auto_push"
+    log_debug_info "VERSION: $version"
+    log_debug_info "###### Debug - Vars ######"
+}
 
-  --repair   Stage & commit the nix_dir with "rebuild - repair <timestamp>"
-             and remove any unfinished logs (Current-Error*.txt and rebuild-*.log
-             that are not final nixos-gen_* logs).
 
-  --update   Before rebuilding, update the flake in nix_dir using:
-               nix flake update
-EOF
-        return 0
-        ;;
-      *) echo "Unknown argument: $1" >&2; return 2;;
-    esac
-  done
 
-  ########################################################################
-  # COLORS (TTY only)
-  ########################################################################
-  if [[ -t 1 ]]; then
-    RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'
-    BLUE=$'\e[34m'; MAGENTA=$'\e[35m'; CYAN=$'\e[36m'
-    BOLD=$'\e[1m'; RESET=$'\e[0m'
-  else
-    RED=""; GREEN=""; YELLOW=""
-    BLUE=""; MAGENTA=""; CYAN=""
-    BOLD=""; RESET=""
-  fi
+########################################################################
+# FORMATTER
+########################################################################
+run_formatter() {
+    if [[ "$enable_formatting" == "true" ]]; then
+        log_info "Running formatter..."
+        execute "$formatter_cmd ." "2"
+        git_add $flake_directory
+        git_commit "Formatted by $formatter_cmd"
+    fi
+}
 
-  ########################################################################
-  # LIGHTWEIGHT GIT HELPERS
-  ########################################################################
-  g() { "$git_bin" "$@"; }
 
-  git_in_repo() {
-    local dir="$1"
-    [[ -d "$dir/.git" ]] || (cd "$dir" && g rev-parse --git-dir >/dev/null 2>&1)
-  }
+########################################################################
+# Repair
+########################################################################
+repair_waited_before=false
+repair_wait_time=3
 
-  git_has_uncommitted_changes() {
-    # prints true if there are changes
-    [[ -n "$(g status --porcelain)" ]]
-  }
+repair_wait () {
+    if [[ "$auto_repair" == "true" ]]; then
+        if [[ "$repair_waited_before" == "true" ]]; then
+            log_debug_info "Waited before so it will start the repair"
+        else 
+            log_warn "Will repair in $repair_wait_time seconds"
+            log_warn "Use \"CTRL + C\" to cancel if you don't want that"
+            for (( waited_time=1; waited_time<=repair_wait_time; waited_time++ )); do
+                log_info "Will repair in $((repair_wait_time - waited_time + 1))..."
+                sleep 1
+            done
+            log_warn "Start Repair"
+            repair_waited_before=true
+        fi
+    fi
+}
 
-  git_pause_if_dirty() {
-    local attempts=0
-    while git_has_uncommitted_changes; do
-      if (( attempts == 0 )); then
-        echo "${YELLOW}Uncommitted changes detected!${RESET}"
-        echo "${RED}Pausing for 5 seconds to allow cancel (Ctrl-C) before attempting repair...${RESET}"
-        sleep 5
-        echo "Attempting repair..."
-        repair || true   # never let a no-op commit kill the script
-        echo "repair ran"
-        ((attempts++)) || true  
-        # loop will re-check cleanliness
-      else
-        echo "${YELLOW}Uncommitted changes still present after repair.${RESET}"
-        echo "${RED}Needs manual review. Continuing in 5 seconds...${RESET}"
-        sleep 5
-        break
-      fi
+
+check_and_repair () {
+
+   if git_check_has_staged_files; then
+        log_warn "Repo has uncommitted files"
+        log_debug_info "auto_commit is $auto_commit"
+        if [[ "$auto_repair" == "true" ]]; then
+            log_info "Starting Repair Uncommitted"
+            if repair_uncommitted; then
+                log_debug_ok "repair_uncommitted Returned 0 (success)"
+            else 
+                log_error "I have no Idea but it has sth to do with git_check_has_staged_files in nyx-rebuild.sh"
+                FATAL
+            fi
+        else 
+            log_error "Due to auto_repair being $auto_repair repair not attempted"
+            log_error "Commit your staged commits or enable \$auto_repair"
+            FATAL
+        fi
+    fi
+
+
+   if git_check_has_unstaged_files ; then
+        log_warn "Repo has unstaged files"
+        log_debug_warn "auto_stage is $auto_stage"
+        if [[ "$auto_repair" == "true" ]]; then
+            log_info "Starting Repair unstaged"
+            if repair_unstaged; then
+                log_debug_ok "repair_unstaged Returned 0 (success)"
+            else 
+                log_error "I have no Idea but it has sth to do with git_check_has_unstaged_files in nyx-rebuild.sh"
+            fi
+        else 
+            log_error "Due to auto_repair being $auto_repair repair not attempted"
+            log_error "Stage your unstaged files or enable \$auto_repair"
+            FATAL 
+        fi
+    fi
+
+}
+
+repair_unstaged () {
+    repair_wait
+    if [[ "$auto_repair" == "true" ]]; then
+        if [[ "$auto_stage" == "true" ]]; then
+            log_debug_info "Will attempt to stage files"
+            git_add $flake_directory
+            log_info "Added unstaged files"
+            repair_uncommitted
+            return 0
+        else 
+            log_error "Due to autoStage being disabled repair not attempted"
+            log_debug_error "Due to auto_stage being $auto_stage repair not attempted"
+            log_error "Stage your unstaged files or enable autoStage"
+            FATAL
+        fi
+    else 
+        log_error "This shouldn't exist #repair_unstaged"
+        return 1
+    fi
+
+}
+
+repair_uncommitted () {
+    repair_wait
+    if [[ "$auto_repair" == "true" ]]; then
+        if [[ "$auto_commit" == "true" ]]; then
+            log_debug_info "Will attempt to commit"
+            git_commit "Auto repair commit - $(date '+%Y-%m-%d_%H-%M-%S')"
+            log_info "Repaired uncommitted changes"
+            return 0
+        else 
+            log_error "Due to autoCommit being disabled repair not attempted"
+            log_debug_error "Due to auto_commit being $auto_commit repair not attempted"
+            log_error "Commit your staged commits or enable autoCommit"
+            FATAL
+        fi
+    else 
+        log_error "This shouldn't exist #repair_uncommitted"
+        return 1
+    fi
+
+} 
+
+
+
+########################################################################
+# SUDO HANDLING
+########################################################################
+ensure_sudo() {
+    get_sudo_ticket
+}
+
+########################################################################
+# NIXOS REBUILD
+########################################################################
+run_nixos_rebuild() {
+    local tmp_log tmp_status status
+    tmp_log=$(mktemp /tmp/nyx-tmp-log.XXXXXX)
+    tmp_status=$(mktemp /tmp/nyx-status.XXXXXX)
+
+    log_debug_info "Running nixos-rebuild command: $*"
+    log_debug_info "Build log: $build_log"
+    log_debug_info "Error log: $error_log"
+    log_debug_info "Using nom binary: $nom_bin"
+    log_debug_info "Temp log: $tmp_log"
+    log_debug_info "Temp status file: $tmp_status"
+
+    set -o pipefail
+    (
+        "$@" 2>&1
+        echo $? > "$tmp_status"
+    ) | tee -a "$tmp_log" | "$nom_bin"
+
+    status=$(<"$tmp_status")
+    execute "rm -f '$tmp_status'"  "2"
+
+    log_debug_info "Exit code: $status"
+
+    if [[ $status -eq 0 ]]; then
+        if grep -Ei -A1 'error|failed' "$tmp_log" >/dev/null; then
+            log_error "Build reported errors despite successful exit code"
+            rebuild_success=false
+            execute "cp '$tmp_log' '$error_log'" "2"
+        else
+            log_ok "Build succeeded"
+            rebuild_success=true
+            execute "cp '$tmp_log' '$build_log'" "2"
+            # Populate generation number for finish_rebuild
+            nixos_generation=$(nixos-rebuild list-generations | grep True | awk '{print $1}')
+        fi
+    else
+        if grep -Ei -A1 'error|failed' "$tmp_log" >/dev/null; then
+            log_error "Build failed with exit code $status"
+            rebuild_success=false
+            execute "cp '$tmp_log' '$error_log'" "2"
+        else
+            log_error "Build exited with $status but no explicit error lines found"
+            rebuild_success=false
+            execute "cp '$tmp_log' '$error_log'" "2"
+        fi
+    fi
+
+    # Send output line by line
+    while IFS= read -r line; do
+        tell_out "$line" "CMD" 2
+    done < "$tmp_log"
+
+    execute "rm -f '$tmp_log'" "2"
+    return "$status"
+}
+
+
+
+
+
+########################################################################
+# MAIN REBUILD PROCESS
+########################################################################
+nyx_rebuild() {
+    start_time=$(date +%s)
+    rebuild_success=false
+    git_store_starting_commit
+    cd "$flake_directory" || {
+        log_error "Could not change directory to $flake_directory"
+        return 1
+    }
+
+    # Ensure we are inside a git repo before proceeding
+    if git_check_if_dir_is_in_repo "$flake_directory"; then
+        log_debug_info "Passed Git repo check"
+    else
+        log_error "Git repo not detected. Aborting rebuild"
+        return 1
+    fi
+
+    check_and_repair
+    git_pull_rebase
+
+    log_to_file_enable
+    run_formatter
+
+    log_separator
+    log_info "Rebuild started: $(date)"
+    log_separator
+
+    ensure_sudo
+
+    run_nixos_rebuild sudo nixos-rebuild "$rebuild_action" --flake "$flake_directory"
+    local rebuild_status=$?
+
+    finish_rebuild "$start_time" >/dev/null 2>&1
+
+    # Only stage/commit logs if rebuild succeeded
+    if [[ "$rebuild_success" == true ]]; then
+        logs_stage_and_commit "Rebuild '$rebuild_action' completed successfully"
+    else
+        log_error "Rebuild failed"
+        git_reset "soft" "$git_starting_commit"
+        logs_stage_and_commit "Error: Rebuild Failed"
+        finish_rebuild "$start_time"
+        trap - EXIT
+        log_debug_info "EXIT trap removed"
+        exit 1
+    fi
+
+    return $rebuild_status
+}
+
+
+########################################################################
+# FINISH
+########################################################################
+finish_rebuild() {
+    local start_time=$1
+    local duration=$(( $(date +%s) - start_time ))
+
+    # Build failure notes from grep output (one per line)
+    if [[ "$rebuild_success" != true ]]; then
+        finish_failure_notes=""
+        if [[ -f "$error_log" ]]; then
+            while IFS= read -r line; do
+                finish_failure_notes+=$'\n'"  $line"
+            done < <(grep -Ei -A1 'error|failed' "$error_log" | tee -a "$error_log" || true)
+        fi
+    fi
+
+    log_separator
+    if [[ "$rebuild_success" == true ]]; then
+        log_end "###############################################"
+        log_end "          Nyx-Rebuild Completed Successfully"
+        log_end "###############################################"
+        log_end "Action:           $rebuild_action"
+        log_end "Flake:            $flake_directory"
+        log_end "Result:           Build succeeded"
+        log_end "Duration:         ${duration}s"
+        log_end "System Generation: $nixos_generation"
+        [[ -n "$finish_success_notes" ]] && log_end "Notes: $finish_success_notes"
+        log_end "Build log:        $build_log"
+        log_end "###############################################"
+    else
+        log_end "###############################################"
+        log_end "          Nyx-Rebuild Failed"
+        log_end "###############################################"
+        log_end "Action:           $rebuild_action"
+        log_end "Flake:            $flake_directory"
+        log_end "Result:           Build failed"
+        log_end "Duration:         ${duration}s"
+        log_end "System Generation: $nixos_generation"
+        if [[ -n "$finish_failure_notes" ]]; then
+            log_end "Notes:"
+            while IFS= read -r note; do
+                log_end "$note"
+            done <<< "$finish_failure_notes"
+        fi
+        log_end "Error log:        $error_log"
+        log_end "###############################################"
+    fi
+    log_separator
+}
+
+
+logs_stage_and_commit() {
+    log_debug_info "logs_stage_and_commit called and is disabling the Logs to Push them"
+    log_to_file_disable
+    local message="$1"
+    git_add "Logs"
+    git_commit "$message"
+    git_push
+}
+
+
+
+
+
+########################################################################
+# helper:
+########################################################################
+
+interpret_flags() {
+    local opt
+    local verbosity=1
+    local action=""
+
+    # Reset OPTIND to handle multiple calls in same shell
+    OPTIND=1
+
+    while getopts ":hv:" opt; do
+        case "$opt" in
+            h)
+                print_help
+                exit 0
+                ;;
+            v)
+                if [[ "$OPTARG" =~ ^[0-9]+$ ]]; then
+                    verbosity="$OPTARG"
+                else
+                    echo "Invalid verbosity level: $OPTARG" >&2
+                    exit 1
+                fi
+                ;;
+            :)
+                echo "Option -$OPTARG requires an argument" >&2
+                exit 1
+                ;;
+            \?)
+                echo "Unknown option: -$OPTARG" >&2
+                exit 1
+                ;;
+        esac
     done
-  }
 
+    shift $((OPTIND - 1))
 
-
-  git_pull_rebase() {
-    g pull --rebase
-  }
-
-  git_add_path() {
-    g add "$@"
-  }
-
-  git_commit_if_staged() {
-    # commit if there is something staged; ignore empty
-    if ! g diff --cached --quiet; then
-      g commit -m "$1" || true
-    fi
-  }
-
-  git_commit_message() {
-    local msg="$1"
-    g commit -m "$msg"
-  }
-
-  git_push_if_enabled() {
-    if [[ "${auto_push}" == "true" ]]; then
-      g push
-    fi
-  }
-
-  git_safe_add_commit_push() {
-    # Convenience: add paths, commit message, optional push
-    local msg="$1"; shift
-    git_add_path "$@"
-    if git_commit_if_staged "$msg"; then
-      git_push_if_enabled
-    fi
-  }
-
-
-  ########################################################################
-  # REPAIR MODE
-  ########################################################################
-  repair() {
-    cd "$nix_dir" || { echo "ERROR: Cannot cd into nix_dir: $nix_dir" >&2; return 1; }
-
-    ts="$(date '+%Y-%m-%d_%H-%M-%S')"
-    echo "Starting repair at ${ts}..."
-
-    # Remove unfinished logs (not final logs)
-    log_dir_rebuild="${log_dir}/rebuild"
-    if [[ -d "$log_dir_rebuild" ]]; then
-      echo "Checking for unfinished logs in: $log_dir_rebuild"
-      if find "$log_dir_rebuild" -type f \
-        ! -name 'nixos-gen_*' \
-        \( -name 'rebuild-*.log' -o -name 'Current-Error*.txt' \) | grep -q .; then
-        echo "Removing unfinished logs..."
-        find "$log_dir_rebuild" -type f \
-          ! -name 'nixos-gen_*' \
-          \( -name 'rebuild-*.log' -o -name 'Current-Error*.txt' \) \
-          -exec rm -v {} +
-        echo "Unfinished logs removed."
-      else
-        echo "No unfinished logs found."
-      fi
+    # First positional arg after options = action
+    if [[ $# -gt 0 ]]; then
+        action="$1"
+        shift
     else
-      echo "No rebuild log directory found."
+        action="test"
     fi
 
-    echo "Staging all changes in $nix_dir..."
-    g add -A
+    rebuild_action="$action"
+    NYX_VERBOSITY="$verbosity"
 
-    # Oed; avoid set nly commit if something is stag-e failure on empty commit
-    if ! g diff --cached --quiet --; then
-      echo "Committing repair changes..."
-      g commit -m "rebuild - repair ${ts}"
-      echo "Repair commit created."
+    # Any extra args after action can be captured if needed
+    remaining_args=("$@")
+}
+
+
+print_help() {
+    cat <<EOF
+Usage: $(basename "$0") [ACTION] [OPTIONS]
+
+Run a nixos-rebuild action with optional verbosity.
+
+Actions:
+  switch      Build and switch to new configuration
+  boot        Build and make available for next boot
+  test        Build and switch without updating bootloader (default)
+
+Options:
+  -v N        Set verbosity level (default: 1)
+  -h, --help  Show this help message and exit
+
+Examples:
+  $(basename "$0") switch -v 3
+  $(basename "$0") boot
+  $(basename "$0")       # runs 'test' with default verbosity
+EOF
+}
+
+
+
+
+########################################################################
+# Setup
+########################################################################
+
+
+setup_nyxrebuild_vars () {
+    if [[ "$auto_repair" == "true" ]]; then
+        # Enforce dependencies between flags
+        if [[ "$auto_stage" != "true" ]]; then
+            log_warn "autoStage is disabled"
+            log_debug_warn "auto_stage is $auto_stage"
+            auto_repair=false
+            log_warn "Disabling autoRepair"
+            log_debug_warn "Setting auto_repair to $auto_repair"
+            log_warn "Please enable autoStage if you want to use this feature"
+        fi
+        if [[ "$auto_commit" != "true" ]]; then
+            log_warn "autoCommit is disabled"
+            log_debug_warn "auto_commit is $auto_commit"
+            auto_repair=false
+            log_warn "Disabling autoRepair"
+            log_debug_warn "Setting auto_repair to $auto_repair"
+            log_warn "Please enable autoCommit if you want to use this feature"
+        fi
+     
+        #if [[ "$auto_push" != "true" ]]; then
+        #    log_warn "autoPush is disabled"
+        #    log_debug_warn "auto_push is $auto_push"
+        #    auto_push=false
+        #    log_warn "Disabling autoRepair"
+        #    log_debug_warn "Setting auto_repair to $auto_repair"
+        #    log_warn "Please enable autoPush if you want to use this feature"
+        #fi
+    fi
+
+    if [[ "$enable_formatting" == "true" ]]; then
+         # Enforce dependencies between flags
+        if [[ "$auto_stage" != "true" ]]; then
+            log_warn "autoStage is disabled"
+            log_debug_warn "auto_stage is $auto_stage"
+            enable_formatting=false
+            log_warn "Disabling enableFormatting"
+            log_debug_warn "Setting enable_formatting to $enable_formatting"
+            log_warn "Please enable autoStage if you want to use this feature"
+        fi
+
+        if [[ "$auto_commit" != "true" ]]; then
+            log_warn "autoCommit is disabled"
+            log_debug_warn "auto_commit is $auto_commit"
+            enable_formatting=false
+            log_warn "Disabling enableFormatting"
+            log_debug_warn "Setting enable_formatting to $enable_formatting"
+            log_warn "Please enable autoCommit if you want to use this feature"
+        fi
+        
+        #if [[ "$auto_push" != "true" ]]; then
+        #    log_warn "autoPush is disabled"
+        #    log_debug_warn "auto_push is $auto_push"
+        #    enable_formatting=false
+        #    log_warn "Disabling enableFormatting"
+        #    log_debug_warn "Setting enable_formatting to $enable_formatting"
+        #    log_warn "Please enable autoPush if you want to use this feature"
+        #fi
+    fi
+
+}
+
+FATAL() {
+    log_error "nyx-rebuild encountered a fatal error"
+    log_error "Script ended due to error. Check $logPath"
+
+    if [[ -n "$git_starting_commit" ]]; then
+        log_error "Resetting repository to starting commit: $git_starting_commit"
+        if git_reset "soft" "$git_starting_commit"; then
+            log_ok "Repository successfully reset to starting commit"
+        else
+            log_error "Failed to reset repository to starting commit"
+        fi
     else
-      echo "No changes to commit."
+        log_warn "No starting commit stored, cannot reset repository"
     fi
 
-  }
+    log_debug_error "Last called function: $(what_messed_up)"
+    log_error "If this is a bug in nyx-rebuild, open an issue and include logs"
 
+    exit 1
+}
 
+trap_on_exit() {
+    local exit_code=$?
+    if [[ $exit_code -eq 0 ]]; then
+        log_debug_ok "Script completed successfully (exit code 0)"
+        finish_rebuild "$start_time"
 
+    else
+        log_error "Script exited with error (exit code $exit_code)"
+        # Only run FATAL if we are not already inside it
+        if [[ "${FUNCNAME[1]}" != "FATAL" ]]; then
+            FATAL
+        fi
+    fi
+}
 
-  ########################################################################
-  # LOGGING / COMMON HELPERS
-  ########################################################################
-  start_time=$(date +%s)
-  start_human=$(date '+%Y-%m-%d %H:%M:%S')
-  stats_duration=0
-  stats_gen="?"
-  stats_errors=0
-  stats_last_error_lines=""
-  rebuild_success=false
-  exit_code=1
+########################################################################
+# ENTRY POINT
+########################################################################
+main () {
+    rebuild_action="$1"
 
-  timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
-  log_dir_rebuild="${log_dir}/rebuild"
-  build_log="${log_dir_rebuild}/rebuild-${timestamp}.log"
-  error_log="${log_dir_rebuild}/Current-Error-${timestamp}.txt"
-
-  console-log() { echo -e "$@" | tee -a "$build_log"; }
-  print_line()  { console-log ""; console-log "${BOLD}==================================================${RESET}"; console-log ""; }
-
-  run_with_log() {
-    local tmp; tmp=$(mktemp)
-    ( "$@" 2>&1; echo $? > "$tmp" ) | tee -a "$build_log"
-    local s; s=$(<"$tmp"); rm "$tmp"; return "$s"
-  }
-
-  run_with_log_rebuild() {
-    local tmp; tmp=$(mktemp)
-    ( "$@" 2>&1; echo $? > "$tmp" ) | tee -a "$build_log" | $nom_bin
-    local s; s=$(<"$tmp"); rm "$tmp"; return "$s"
-  }
-
-  ########################################################################
-  # EARLY REPAIR MODE CHECK
-  ########################################################################
-  if [[ "$do_repair" == true ]]; then
-      ########################################################################
-      # BANNER
-      ########################################################################
-      echo
-      nyx-tool "Nyx" "nyx-rebuild --repair" "$version" \
-        "Smart NixOS configuration repair" \
+    #interpret_flags "$@"
+    
+    nyx-tool "Nyx" "nyx-rebuild" "$version" \
+        "Smart NixOS configuration rebuilder" \
         "by Peritia-System" \
         "https://github.com/Peritia-System/Nyx-Tools" \
         "https://github.com/Peritia-System/Nyx-Tools/issues" \
-        "Fixing our mistake... or yours"
-      echo
-      repair
-      rebuild_success=true
-      return 0
-  fi
+        "Always up to date for you!"
 
-  finish_nyx_rebuild() {
-    stats_duration=$(( $(date +%s) - start_time ))
-    echo
-    if [[ "$rebuild_success" == true ]]; then
-      echo "${GREEN}${BOLD}NixOS Rebuild Complete${RESET}"
-      echo "${BOLD}${CYAN}Summary:${RESET}"
-      echo "  Started:    $start_human"
-      echo "  Duration:   ${stats_duration} sec"
-      echo "  Generation: $stats_gen"
-    else
-      echo "${RED}${BOLD}NixOS Rebuild Failed${RESET}"
-      echo "${BOLD}${RED}Error Stats:${RESET}"
-      echo "  Started:    $start_human"
-      echo "  Duration:   ${stats_duration} sec"
-      echo "  Error lines: ${stats_errors}"
-      [[ -n "$stats_last_error_lines" ]] && echo -e "${YELLOW}Last few errors:${RESET}$stats_last_error_lines"
-    fi
-  }
-  trap finish_nyx_rebuild EXIT
+        
+    
 
-  ########################################################################
-  # BANNER
-  ########################################################################
-  echo
-  nyx-tool "Nyx" "nyx-rebuild" "$version" \
-    "Smart NixOS configuration rebuilder" \
-    "by Peritia-System" \
-    "https://github.com/Peritia-System/Nyx-Tools" \
-    "https://github.com/Peritia-System/Nyx-Tools/issues" \
-    "Always up to date for you!"
-  echo
+    # to do make this a flag: verbosity
+    local verbosity=1
 
-  ########################################################################
-  # PREP
-  ########################################################################
-  mkdir -p "$log_dir_rebuild"
-  cd "$nix_dir" || { echo "Cannot cd into nix_dir: $nix_dir" >&2; exit_code=1; return $exit_code; }
-  
-  ########################################################################
-  # GIT DIRTY CHECK
-  ########################################################################
-  echo -e "${BOLD}${BLUE}Checking Git status...${RESET}"
-  git_pause_if_dirty
+    #source all the files - generated by the .nix file
+    source_all
 
-  ########################################################################
-  # NORMAL REBUILD FLOW...
-  ########################################################################
-
-  console-log "${BOLD}${BLUE}Pulling latest changes...${RESET}"
-  if ! run_with_log git pull --rebase; then
-    exit_code=1; return $exit_code
-  fi
-
-  ########################################################################
-  # OPTIONAL: editor
-  ########################################################################
-  if [[ "$start_editor" == "true" ]]; then
-    console-log "${BOLD}${BLUE}Opening editor...${RESET}"
-    console-log "Started editing: $(date)"
-    run_with_log "$editor_cmd"
-    console-log "Finished editing: $(date)"
-    console-log "${BOLD}${CYAN}Changes summary:${RESET}"
-    run_with_log git diff --compact-summary
-  fi
-
-  ########################################################################
-  # OPTIONAL: formatter
-  ########################################################################
-  if [[ "$enable_formatting" == "true" ]]; then
-    console-log "${BOLD}${MAGENTA}Running formatter...${RESET}"
-    run_with_log "$formatter_cmd" .
-  fi
-
-  ########################################################################
-  # REBUILD
-  ########################################################################
-
-  # Check if update:
-  print_line
-  if [[ "$do_update" == true ]]; then
-    console-log "${BOLD}${BLUE}Updating flake...${RESET}"
-    print_line
-    run_with_log nix flake update --verbose
-    if git_has_uncommitted_changes; then
-      git_add_path flake.lock
-      git_commit_if_staged "flake update: $(date '+%Y-%m-%d %H:%M:%S')"
-    fi
-    print_line
-  fi
+    # the interger decides verbosity level
+    setup_logging_vars $verbosity
 
 
-  console-log "${BOLD}${BLUE}Starting system rebuild...${RESET}"
+    # From now on Logging functions can safely be called:
+    log_debug_info "Checking that script is NOT run with sudo..."
+    check_if_run_with_sudo
 
-  if find ~ -type f -name '*delme-HMbackup' | grep -q .; then
-    print_line
-    console-log "Removing old HM conf"
-    run_with_log find ~ -type f -name '*delme-HMbackup' -exec rm -v {} +
-    print_line
-  fi
+    # Logging stuff
+    log_debug_info "Initializing logging..."
+    log_subdir="${log_dir}/rebuild"
+    mkdir -p "$log_subdir"
+    timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
+
+    # lib/logging.sh
+    log_debug_info "Setting up basic logging (directories, log file)..."
+    setup_logging_basic
+
+    build_log="${logPath%.log}-rebuild.log"
+    error_log="${logPath%.log}-Current-Error.txt"
 
 
-  if sudo -n true 2>/dev/null; then
-    console-log "Sudo rights already available"
-  else
-    console-log "Getting sudo ticket (please enter your password)"
-    run_with_log sudo whoami > /dev/null
-  fi
+    # lib/git.sh
+    log_debug_info "Configuring git-related variables..."
+    setup_git_vars
 
-  print_line
-  console-log "Rebuild started: $(date)"
-  print_line
+    log_debug_info "Configuring nyx-rebuild variables..."
+    setup_nyxrebuild_vars
 
-  run_with_log_rebuild sudo nixos-rebuild switch --flake "$nix_dir"
-  rebuild_status=$?
 
-  if [[ $rebuild_status -ne 0 ]]; then
-    echo "${RED}Rebuild failed at $(date).${RESET}" > "$error_log"
-    stats_errors=$(grep -Ei -A 1 'error|failed' "$build_log" | tee -a "$error_log" | wc -l || true)
-    stats_last_error_lines=$(tail -n 10 "$error_log" || true)
-
-    # capture and push error artifacts
-    git_add_path "$log_dir_rebuild"
-    g commit -m "Rebuild failed: errors logged" || true
-    git_push_if_enabled
-
-    exit_code=1
-    return $exit_code
-  fi
-
-  ########################################################################
-  # SUCCESS PATH
-  ########################################################################
-  rebuild_success=true
-  exit_code=0
-
-  gen=$(nixos-rebuild list-generations | grep True | awk '{$1=$1};1' || true)
-  stats_gen=$(echo "$gen" | awk '{printf "%04d", $1}' || echo "0000")
-
-  # Append summary to build log (before rotating file name)
-  finish_nyx_rebuild >> "$build_log"
-
-  # Commit config changes (if any)
-  git_add_path -u
-  if git_commit_if_staged "Rebuild: $gen"; then
-    echo "${BLUE}Commit message:${RESET}${GREEN}Rebuild: $gen${RESET}"
-  fi
-
-  # Move and add final log
-  final_log="$log_dir_rebuild/nixos-gen_${stats_gen}-switch-${timestamp}.log"
-  mv "$build_log" "$final_log"
-  git_add_path "$final_log"
-  git_commit_if_staged "log for $gen" || echo "${YELLOW}No changes in logs to commit.${RESET}"
-
-  git_push_if_enabled && echo "${GREEN}Changes pushed to remote.${RESET}" || true
+    debug_print_vars
+    trap trap_on_exit EXIT
+    nyx_rebuild "$rebuild_action"
 }
 
-# Execute when sourced as a script
-nyx-rebuild "$@"
+
+main "$@"
