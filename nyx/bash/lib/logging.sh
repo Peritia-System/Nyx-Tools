@@ -70,8 +70,11 @@ tell_out() {
         tell_out "$message # $(what_messed_up)" "DEBUG" "3"
     fi
 
-    local log_line="[$timestamp][$level] $message"
-    local line="[$level] $message"
+    # Fixed width for level display
+    local level_fmt
+    printf -v level_fmt "%-9s" " $level " # using 9 characters
+    local log_line="[$timestamp] [${level_fmt}]  $message"
+    local line=" [${level_fmt}]  $message"
 
     # Only output messages if verbosity level is sufficient
     if [[ $NYX_VERBOSITY -ge $verbosity_level ]]; then
@@ -92,6 +95,7 @@ tell_out() {
         write_log "$log_line"
     fi
 }
+
 
 
 ########################################################################
