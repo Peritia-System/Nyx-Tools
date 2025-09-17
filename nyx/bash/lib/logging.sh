@@ -72,7 +72,10 @@ tell_out() {
 
     # Fixed width for level display
     local level_fmt
-    printf -v level_fmt "%-9s" " $level " # using 9 characters
+    local pad
+    pad=$(( (7 - ${#level}) / 2 ))
+    printf -v level_fmt "%*s%s%*s" $pad "" "$level" $((7 - pad - ${#level})) ""
+
     local log_line="[$timestamp] [${level_fmt}]  $message"
     local line=" [${level_fmt}]  $message"
 
