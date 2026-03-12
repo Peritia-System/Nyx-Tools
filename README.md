@@ -2,10 +2,10 @@
 
 
 > [!WARNING]  
-> This Repo moved! 
-> PLEASE DO NOT USE IT IN THIS STAGE 
-> I wrote this when i had barely any an understanding of Nix. I will rewrite most soon!  
-> Might host a rewrite here soon: [New Repo](https://git.alovely.space/Nyx/Nyx-Tools)
+> This Repo moved!  
+> PLEASE DO NOT USE IT IN THIS STAGE   
+> I wrote this when i had barely any an understanding of Nix. I will rewrite most soon!   
+> Might host a rewrite here soon: [New Repo](https://git.alovely.space/Nyx/Nyx-Tools)  
 
 
 **Nyx** is a modular toolkit that makes managing NixOS easier — faster rebuilds, automated cleanup, shell customization, and an optional TUI interface.
